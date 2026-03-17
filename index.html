@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture Builder Gacha</title>
+<style>
+body {
+  margin: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background: linear-gradient(135deg, #0f172a, #020617);
+  color: #e2e8f0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.container {
+  text-align: center;
+  background: rgba(255,255,255,0.05);
+  padding: 30px;
+  border-radius: 20px;
+  width: 450px;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+}
+
+h1 {
+  margin-bottom: 10px;
+}
+
+.section {
+  margin: 20px 0;
+}
+
+.result {
+  font-size: 20px;
+  min-height: 50px;
+}
+
+button {
+  margin-top: 10px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  background: #38bdf8;
+  color: #020617;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.design {
+  margin-top: 20px;
+  padding: 15px;
+  border-top: 1px solid #334155;
+}
+
+.tag {
+  display: inline-block;
+  margin: 5px;
+  padding: 5px 10px;
+  background: #1e293b;
+  border-radius: 10px;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Architecture Builder</h1>
+  <p>ガチャで要素を集めて、自分の建築を設計しよう</p>
+
+  <div class="section">
+    <button onclick="draw('structure')">構造ガチャ</button>
+    <div class="result" id="structure"></div>
+  </div>
+
+  <div class="section">
+    <button onclick="draw('material')">素材ガチャ</button>
+    <div class="result" id="material"></div>
+  </div>
+
+  <div class="section">
+    <button onclick="draw('style')">スタイルガチャ</button>
+    <div class="result" id="style"></div>
+  </div>
+
+  <div class="design">
+    <h3>あなたの設計</h3>
+    <div id="final"></div>
+  </div>
+</div>
+
+<script>
+const data = {
+  structure: ["平屋", "高層ビル", "タワー", "ドーム", "橋"],
+  material: ["木材", "コンクリート", "ガラス", "鉄骨", "石"],
+  style: ["モダン", "和風", "未来的", "ミニマル", "クラシック"]
+};
+
+const selected = {
+  structure: "",
+  material: "",
+  style: ""
+};
+
+function draw(type) {
+  const arr = data[type];
+  const value = arr[Math.floor(Math.random() * arr.length)];
+  selected[type] = value;
+
+  document.getElementById(type).textContent = value;
+  updateFinal();
+}
+
+function updateFinal() {
+  const final = document.getElementById("final");
+
+  if (selected.structure && selected.material && selected.style) {
+    final.innerHTML = `
+      <div class="tag">${selected.style}</div>
+      <div class="tag">${selected.material}</div>
+      <div class="tag">${selected.structure}</div>
+      <p style="margin-top:10px;">→ ${selected.style}な${selected.material}の${selected.structure}</p>
+    `;
+  }
+}
+</script>
+
+</body>
+</html>
