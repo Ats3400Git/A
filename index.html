@@ -1,131 +1,197 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Architecture Builder Gacha</title>
-<style>
-body {
-  margin: 0;
-  font-family: 'Segoe UI', sans-serif;
-  background: linear-gradient(135deg, #0f172a, #020617);
-  color: #e2e8f0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-
-.container {
-  text-align: center;
-  background: rgba(255,255,255,0.05);
-  padding: 30px;
-  border-radius: 20px;
-  width: 450px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-}
-
-h1 {
-  margin-bottom: 10px;
-}
-
-.section {
-  margin: 20px 0;
-}
-
-.result {
-  font-size: 20px;
-  min-height: 50px;
-}
-
-button {
-  margin-top: 10px;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 10px;
-  background: #38bdf8;
-  color: #020617;
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.design {
-  margin-top: 20px;
-  padding: 15px;
-  border-top: 1px solid #334155;
-}
-
-.tag {
-  display: inline-block;
-  margin: 5px;
-  padding: 5px 10px;
-  background: #1e293b;
-  border-radius: 10px;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AD-Venture: Close the X</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #222; font-family: sans-serif; cursor: crosshair; }
+        canvas { display: block; background: #e0e0e0; }
+        #ui { position: absolute; top: 10px; left: 10px; pointer-events: none; }
+        .msg { font-size: 20px; font-weight: bold; color: #333; background: rgba(255,255,255,0.7); padding: 5px; }
+    </style>
 </head>
 <body>
-
-<div class="container">
-  <h1>Architecture Builder</h1>
-  <p>ガチャで要素を集めて、自分の建築を設計しよう</p>
-
-  <div class="section">
-    <button onclick="draw('structure')">構造ガチャ</button>
-    <div class="result" id="structure"></div>
-  </div>
-
-  <div class="section">
-    <button onclick="draw('material')">素材ガチャ</button>
-    <div class="result" id="material"></div>
-  </div>
-
-  <div class="section">
-    <button onclick="draw('style')">スタイルガチャ</button>
-    <div class="result" id="style"></div>
-  </div>
-
-  <div class="design">
-    <h3>あなたの設計</h3>
-    <div id="final"></div>
-  </div>
-</div>
+    <div id="ui">
+        <div class="msg">【AD-Venture】青い自機を操作して、最上部の「小さな×」を破壊せよ！</div>
+        <div class="msg">操作：[矢印キー] または [WASD]</div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
 
 <script>
-const data = {
-  structure: ["平屋", "高層ビル", "タワー", "ドーム", "橋"],
-  material: ["木材", "コンクリート", "ガラス", "鉄骨", "石"],
-  style: ["モダン", "和風", "未来的", "ミニマル", "クラシック"]
-};
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
-const selected = {
-  structure: "",
-  material: "",
-  style: ""
-};
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
-function draw(type) {
-  const arr = data[type];
-  const value = arr[Math.floor(Math.random() * arr.length)];
-  selected[type] = value;
+// ゲーム設定
+const player = { x: 100, y: canvas.height - 50, w: 20, h: 20, vx: 0, vy: 0, speed: 5, jump: -12, grounded: false };
+const gravity = 0.6;
+const platforms = [];
+const ads = [];
+let goal = { x: canvas.width / 2, y: 100, size: 15, active: true };
+let gameCleared = false;
 
-  document.getElementById(type).textContent = value;
-  updateFinal();
+// キー入力
+const keys = {};
+window.addEventListener('keydown', (e) => keys[e.code] = true);
+window.addEventListener('keyup', (e) => keys[e.code] = false);
+
+// 広告（足場）の生成
+function createPlatforms() {
+    const textOptions = ["今すぐインストール！", "残り5秒でスキップ", "【警告】容量不足です", "限定セール中！", "詳しくはこちら"];
+    for (let i = 0; i < 8; i++) {
+        platforms.push({
+            x: Math.random() * (canvas.width - 200),
+            y: canvas.height - (i * 100 + 150),
+            w: 220,
+            h: 40,
+            text: textOptions[i % textOptions.length],
+            color: `hsl(${Math.random() * 360}, 70%, 80%)`
+        });
+    }
 }
 
-function updateFinal() {
-  const final = document.getElementById("final");
-
-  if (selected.structure && selected.material && selected.style) {
-    final.innerHTML = `
-      <div class="tag">${selected.style}</div>
-      <div class="tag">${selected.material}</div>
-      <div class="tag">${selected.structure}</div>
-      <p style="margin-top:10px;">→ ${selected.style}な${selected.material}の${selected.structure}</p>
-    `;
-  }
+// 偽の×ボタン（お邪魔キャラ）
+function createAds() {
+    for (let i = 0; i < 15; i++) {
+        ads.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * (canvas.height - 200),
+            vx: (Math.random() - 0.5) * 4,
+            vy: (Math.random() - 0.5) * 4,
+            size: 10 + Math.random() * 10
+        });
+    }
 }
+
+function update() {
+    if (gameCleared) return;
+
+    // プレイヤーの移動
+    if (keys['ArrowLeft'] || keys['KeyA']) player.vx = -player.speed;
+    else if (keys['ArrowRight'] || keys['KeyD']) player.vx = player.speed;
+    else player.vx *= 0.8;
+
+    if ((keys['ArrowUp'] || keys['KeyW'] || keys['Space']) && player.grounded) {
+        player.vy = player.jump;
+        player.grounded = false;
+    }
+
+    player.vy += gravity;
+    player.x += player.vx;
+    player.y += player.vy;
+
+    // 画面端判定
+    if (player.x < 0) player.x = 0;
+    if (player.x > canvas.width - player.w) player.x = canvas.width - player.w;
+    if (player.y > canvas.height) { // 落下したらリセット
+        player.x = 100;
+        player.y = canvas.height - 50;
+        player.vy = 0;
+    }
+
+    // 足場との判定
+    player.grounded = false;
+    platforms.forEach(p => {
+        if (player.x < p.x + p.w && player.x + player.w > p.x &&
+            player.y + player.h > p.y && player.y + player.h < p.y + p.h + player.vy) {
+            player.y = p.y - player.h;
+            player.vy = 0;
+            player.grounded = true;
+        }
+    });
+
+    // 偽の×ボタンとの判定（弾き飛ばされる）
+    ads.forEach(ad => {
+        ad.x += ad.vx;
+        ad.y += ad.vy;
+        if (ad.x < 0 || ad.x > canvas.width) ad.vx *= -1;
+        if (ad.y < 0 || ad.y > canvas.height) ad.vy *= -1;
+
+        let dx = (player.x + player.w/2) - ad.x;
+        let dy = (player.y + player.h/2) - ad.y;
+        let dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < ad.size + 10) {
+            player.vx = dx * 2; // 弾き飛ばす
+            player.vy = -5;
+        }
+    });
+
+    // ゴール判定
+    let gdx = (player.x + player.w/2) - goal.x;
+    let gdy = (player.y + player.h/2) - goal.y;
+    let gDist = Math.sqrt(gdx*gdx + gdy*gdy);
+    if (gDist < goal.size + 10) {
+        gameCleared = true;
+    }
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // 足場の描画
+    platforms.forEach(p => {
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, p.w, p.h);
+        ctx.strokeStyle = "#999";
+        ctx.strokeRect(p.x, p.y, p.w, p.h);
+        ctx.fillStyle = "#333";
+        ctx.font = "14px sans-serif";
+        ctx.fillText(p.text, p.x + 10, p.y + 25);
+    });
+
+    // 偽の×の描画
+    ctx.fillStyle = "white";
+    ctx.strokeStyle = "red";
+    ads.forEach(ad => {
+        ctx.beginPath();
+        ctx.arc(ad.x, ad.y, ad.size, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.moveTo(ad.x - 5, ad.y - 5); ctx.lineTo(ad.x + 5, ad.y + 5);
+        ctx.moveTo(ad.x + 5, ad.y - 5); ctx.lineTo(ad.x - 5, ad.y + 5);
+        ctx.stroke();
+    });
+
+    // プレイヤーの描画
+    ctx.fillStyle = "#007bff";
+    ctx.fillRect(player.x, player.y, player.w, player.h);
+
+    // 本物の×（ゴール）の描画
+    if (!gameCleared) {
+        ctx.fillStyle = "white";
+        ctx.strokeStyle = "black";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(goal.x, goal.y, goal.size, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(goal.x - 7, goal.y - 7); ctx.lineTo(goal.x + 7, goal.y + 7);
+        ctx.moveTo(goal.x + 7, goal.y - 7); ctx.lineTo(goal.x - 7, goal.y + 7);
+        ctx.stroke();
+    } else {
+        ctx.fillStyle = "rgba(0,0,0,0.8)";
+        ctx.fillRect(0,0,canvas.width, canvas.height);
+        ctx.fillStyle = "white";
+        ctx.font = "40px bold sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("AD-FREE WORLD ACHIEVED!", canvas.width/2, canvas.height/2);
+        ctx.font = "20px sans-serif";
+        ctx.fillText("すべての広告が消滅しました。リロードで再挑戦。", canvas.width/2, canvas.height/2 + 50);
+    }
+
+    requestAnimationFrame(() => {
+        update();
+        draw();
+    });
+}
+
+createPlatforms();
+createAds();
+draw();
 </script>
-
 </body>
 </html>
